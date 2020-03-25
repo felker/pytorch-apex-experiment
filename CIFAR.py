@@ -1,4 +1,5 @@
 import os
+import pathlib
 import torch
 import time
 import argparse
@@ -150,6 +151,10 @@ print('=======================================================')
 
 
 result_dir = os.path.join('./', 'result/', args.GPU)
+# if not os.path.exists(result_dir):
+#     os.makedirs(result_dir)
+pathlib.Path(result_dir).mkdir(parents=True, exist_ok=True)
+
 result_filename = f'CIFAR_{args.mode}_{args.batch_size}_{args.iteration}_result.pkl'
 with open(os.path.join(result_dir, result_filename), 'wb') as f:
     pickle.dump(result, f)
