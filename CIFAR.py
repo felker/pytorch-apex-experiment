@@ -149,7 +149,7 @@ print('Test acc - mean: %.2f, std %.2f'.format(np.mean(result['test_acc']),
 print('=======================================================')
 
 
-result_dir = os.join('./', 'result/', args.GPU)
+result_dir = os.path.join('./', 'result/', args.GPU)
 result_filename = f'CIFAR_{args.mode}_{args.batch_size}_{args.iteration}_result.pkl'
-with open(os.join(result_dir, result_filename), 'wb') as f:
+with open(os.path.join(result_dir, result_filename), 'wb') as f:
     pickle.dump(result, f)
