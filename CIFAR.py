@@ -1,20 +1,25 @@
-import torch, time, argparse, pickle
+import os
+import torch
+import time
+import argparse
+import pickle
 import numpy as np
 from torchvision.datasets import cifar
 from torchvision.transforms import transforms
 from VGG16 import VGG16
-from utils import get_gpu_memory_map
+from utils import get_first_gpu_memory_usage
 from torch.utils.data import DataLoader
 from apex import amp
-from apex.fp16_utils import *
-
+from apex.fp16_utils import network_to_half, FP16_Optimizer
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--GPU', type=str, default='gpu_name')
-parser.add_argument('--mode', type=str, default='FP32', choices=['FP32', 'FP16', 'amp'])
+parser.add_argument('--mode', type=str, default='FP32', choices=[
+    'FP32', 'FP16', 'amp'])
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--iteration', type=int, default=100)
-parser.add_argument('--opt_level', type=str, default="O1", help='What type of half precision to use.')
+parser.add_argument('--opt_level', type=str, default="O1",
+                    help='What type of half precision to use.')
 args = parser.parse_args()
 
 print('------------ Options -------------')
@@ -22,7 +27,7 @@ for k, v in sorted(vars(args).items()):
     print('%s: %s' % (str(k), str(v)))
 print('-------------- End ---------------')
 
-init_mem = get_gpu_memory_map()
+init_mem = get_first_gpu_memory_usage()
 seed = 7
 np.random.seed(seed)
 torch.manual_seed(seed)
@@ -33,8 +38,15 @@ transform = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
 ])
-train_loader = DataLoader(cifar.CIFAR10(root='cifar', train=True, transform=transform, download=True), batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True)
-test_loader = DataLoader(cifar.CIFAR10(root='cifar', train=False, transform=transform, download=True), batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True)
+
+# KGF: run this next function call on Traverse, etc. head nodes before running
+# tests; need internet access to download dataset
+train_loader = DataLoader(
+    cifar.CIFAR10(root='cifar', train=True, transform=transform, download=True),
+    batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True)
+test_loader = DataLoader(
+    cifar.CIFAR10(root='cifar', train=False, transform=transform, download=True),
+    batch_size=args.batch_size, shuffle=False, pin_memory=True, drop_last=True)
 loss_fn = torch.nn.CrossEntropyLoss().cuda()
 result = {}
 result['train_time'] = []
@@ -51,7 +63,8 @@ for i in range(5):
         model = network_to_half(model)
         optimizer = FP16_Optimizer(optimizer, static_loss_scale=128)
     elif args.mode == 'amp':
-        model, optimizer = amp.initialize(model, optimizer, opt_level=args.opt_level)
+        model, optimizer = amp.initialize(
+            model, optimizer, opt_level=args.opt_level)
 
     ll = []
     iteration = 0
@@ -70,7 +83,7 @@ for i in range(5):
                 loss.backward()
             elif args.mode == 'FP16':
                 optimizer.backward(loss)
-            else:  
+            else:
                 with amp.scale_loss(loss, optimizer) as scaled_loss:
                     scaled_loss.backward()
 
@@ -84,7 +97,7 @@ for i in range(5):
                 break
 
     end_time = time.time() - start_time
-    used_mem = get_gpu_memory_map() - init_mem
+    used_mem = get_first_gpu_memory_usage() - init_mem
     print('[%d-th]' % ((i+1)))
     print('Train time = %.2f' % (end_time))
     print('Train loss = %.4f' % (np.mean(ll)))
@@ -121,13 +134,22 @@ for i in range(5):
     print()
 
 print('==================== Final results ====================')
-print('Train time - mean: %.2f, std %.2f' % (np.mean(result['train_time']), np.std(result['train_time'])))
-print('Train loss - mean: %.4f, std %.4f' % (np.mean(result['train_loss']), np.std(result['train_loss'])))
-print('Used memory - mean: %.2f, std %.2f' % (np.mean(result['train_mem']), np.std(result['train_mem'])))
-print('Test time - mean: %.2f, std %.2f' % (np.mean(result['test_time']), np.std(result['test_time'])))
-print('Test loss - mean: %.4f, std %.4f' % (np.mean(result['test_loss']), np.std(result['test_loss'])))
-print('Test acc - mean: %.2f, std %.2f' % (np.mean(result['test_acc']), np.std(result['test_acc'])))
+print('Train time - mean: %.2f, std %.2f'.format(np.mean(result['train_time']),
+                                                 np.std(result['train_time'])))
+print('Train loss - mean: %.4f, std %.4f'.format(np.mean(result['train_loss']),
+                                                 np.std(result['train_loss'])))
+print('Used memory - mean: %.2f, std %.2f'.format(np.mean(result['train_mem']),
+                                                  np.std(result['train_mem'])))
+print('Test time - mean: %.2f, std %.2f'.format(np.mean(result['test_time']),
+                                                np.std(result['test_time'])))
+print('Test loss - mean: %.4f, std %.4f'.format(np.mean(result['test_loss']),
+                                                np.std(result['test_loss'])))
+print('Test acc - mean: %.2f, std %.2f'.format(np.mean(result['test_acc']),
+                                               np.std(result['test_acc'])))
 print('=======================================================')
 
-with open('result/' + args.GPU + '/CIFAR_' + args.mode + '_' + str(args.batch_size) + '_' + str(args.iteration) + '_result.pkl', 'wb') as f:
+
+result_dir = os.join('./', 'result/', args.GPU)
+result_filename = f'CIFAR_{args.mode}_{args.batch_size}_{args.iteration}_result.pkl'
+with open(os.join(result_dir, result_filename), 'wb') as f:
     pickle.dump(result, f)
