@@ -25,7 +25,7 @@ args = parser.parse_args()
 
 print('------------ Options -------------')
 for k, v in sorted(vars(args).items()):
-    print('%s: %s' % (str(k), str(v)))
+    print(f'{str(k)}: {str(v)}')
 print('-------------- End ---------------')
 
 init_mem = get_first_gpu_memory_usage()
@@ -99,10 +99,10 @@ for i in range(5):
 
     end_time = time.time() - start_time
     used_mem = get_first_gpu_memory_usage() - init_mem
-    print('[%d-th]' % ((i+1)))
-    print('Train time = %.2f' % (end_time))
-    print('Train loss = %.4f' % (np.mean(ll)))
-    print('GPU memory usage = %.2f' % (used_mem))
+    print('[{:d}-th]'.format(i+1))
+    print('Train time = {:.2f}'.format(end_time))
+    print('Train loss = {:.4f}'.format(np.mean(ll)))
+    print('GPU memory usage = {:.2f}'.format(used_mem))
     result['train_time'].append(end_time)
     result['train_mem'].append(used_mem)
     result['train_loss'].append(np.mean(ll))
@@ -129,23 +129,23 @@ for i in range(5):
     result['test_loss'].append(loss / test_loader.__len__())
     result['test_acc'].append(cor / total * 100)
 
-    print('Test time - %.2f' % (end_time))
-    print('Test loss - %.4f' % (loss / test_loader.__len__()))
-    print('Test acc - %.2f' % (cor / total * 100))
+    print('Test time - {:.2f}'.format(end_time))
+    print('Test loss - {:.4f}'.format(loss / test_loader.__len__()))
+    print('Test acc - {:.2f}'.format(cor / total * 100))
     print()
 
 print('==================== Final results ====================')
-print('Train time - mean: %.2f, std %.2f'.format(np.mean(result['train_time']),
+print('Train time - mean: {:.2f}, std {:.2f}'.format(np.mean(result['train_time']),
                                                  np.std(result['train_time'])))
-print('Train loss - mean: %.4f, std %.4f'.format(np.mean(result['train_loss']),
+print('Train loss - mean: {:.4f}, std {:.4f}'.format(np.mean(result['train_loss']),
                                                  np.std(result['train_loss'])))
-print('Used memory - mean: %.2f, std %.2f'.format(np.mean(result['train_mem']),
+print('Used memory - mean: {:.2f}, std {:.2f}'.format(np.mean(result['train_mem']),
                                                   np.std(result['train_mem'])))
-print('Test time - mean: %.2f, std %.2f'.format(np.mean(result['test_time']),
+print('Test time - mean: {:.2f}, std {:.2f}'.format(np.mean(result['test_time']),
                                                 np.std(result['test_time'])))
-print('Test loss - mean: %.4f, std %.4f'.format(np.mean(result['test_loss']),
+print('Test loss - mean: {:.4f}, std {:.4f}'.format(np.mean(result['test_loss']),
                                                 np.std(result['test_loss'])))
-print('Test acc - mean: %.2f, std %.2f'.format(np.mean(result['test_acc']),
+print('Test acc - mean: {:.2f}, std {:.2f}'.format(np.mean(result['test_acc']),
                                                np.std(result['test_acc'])))
 print('=======================================================')
 
